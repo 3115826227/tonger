@@ -1,15 +1,15 @@
 package pkg
 
 import (
-	"tonger/pkg/client"
-	"tonger/pkg/config"
-	"tonger/pkg/constant"
-	"tonger/pkg/log"
-	"tonger/pkg/model"
-	"tonger/pkg/server"
 	"strings"
 	"sync"
 	"time"
+	"tonger/pkg/config"
+	"tonger/pkg/constant"
+	"tonger/pkg/internal/client"
+	"tonger/pkg/internal/model"
+	"tonger/pkg/internal/server"
+	"tonger/pkg/log"
 )
 
 type Broker struct {
@@ -57,7 +57,9 @@ func (broker *Broker) stopClients() {
 }
 
 func (broker *Broker) Run() {
+	// run server
 	broker.goFunc(broker.runServer)
+	// run client
 	broker.goFunc(broker.runClients)
 	d := time.Duration(config.Conf.HeartbeatTime * 1e6)
 	ticker := time.NewTicker(d)
@@ -69,10 +71,10 @@ func (broker *Broker) Run() {
 				broker.stopClients()
 				return
 			case <-ticker.C:
+				// send to heartbeat to other broker
 				log.Logger.Info("send to heartbeat")
 				var message = model.RPCMessage{MessageType: constant.HeartBeatSignal}
-				errChan := make(chan error, 10)
-				broker.cs.SendAsync(message, errChan)
+				broker.cs.Send(message)
 			}
 		}
 	}()

@@ -1,8 +1,10 @@
 package server
 
 import (
-	"fmt"
+	"encoding/json"
 	"net"
+	"tonger/pkg/constant"
+	"tonger/pkg/internal/model"
 	"tonger/pkg/log"
 )
 
@@ -29,13 +31,14 @@ func (server *TCPServer) Run() {
 		return
 	}
 	log.Logger.Info("tcp server start successful: " + server.Addr)
+	var conn net.Conn
 	for {
 		select {
 		case <-server.closeSignal:
 			log.Logger.Info("tcp server stop: " + server.Addr)
 			return
 		default:
-			conn, err := listener.Accept()
+			conn, err = listener.Accept()
 			if err != nil {
 				continue
 			}
@@ -47,12 +50,20 @@ func (server *TCPServer) Run() {
 func (server *TCPServer) handle(conn net.Conn) {
 	defer conn.Close()
 	for {
-		var buf = make([]byte, 10)
+		var buf = make([]byte, 512)
 		n, err := conn.Read(buf)
 		if err != nil {
 			log.Logger.Error("conn read error" + err.Error())
 			return
 		}
-		log.Logger.Info(fmt.Sprintf("read %d bytes, content is %v", n, string(buf[:n])))
+		var msg model.RPCMessage
+		if err = json.Unmarshal(buf[:n], &msg); err != nil {
+			log.Logger.Error("data unmarshal failed" + err.Error())
+			return
+		}
+		switch msg.MessageType {
+		case constant.HeartBeatSignal:
+			continue
+		}
 	}
 }

@@ -3,8 +3,8 @@ package client
 import (
 	"encoding/json"
 	"net"
+	"tonger/pkg/internal/model"
 	"tonger/pkg/log"
-	"tonger/pkg/model"
 )
 
 type TCPClients struct {
@@ -41,6 +41,9 @@ func (clients *TCPClients) SendAsync(message model.RPCMessage, errChan chan erro
 }
 
 func (clients *TCPClients) Run() {
+	for _, client := range clients.clients {
+		go client.Conn()
+	}
 	for {
 		select {
 		case <-clients.closeSignal:
@@ -95,6 +98,7 @@ func (client *TCPClient) Conn() {
 				log.Logger.Error(err.Error())
 				continue
 			}
+			log.Logger.Info(string(client.data))
 			if _, err = client.conn.Write(client.data); err != nil {
 				log.Logger.Error(err.Error())
 				return
